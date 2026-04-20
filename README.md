@@ -27,3 +27,4 @@ python app.py
 - `/scan/<id>` — View saved scan
 - `/scan/delete/<id>` — Delete scan
 - `/download/pdf|json|excel/<filename>` — Downloads
+![Alt text](image-url-or-path)
