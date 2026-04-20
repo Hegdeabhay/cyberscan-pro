@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Results — {{ data.target }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<canvas id="particles" class="particles-canvas"></canvas>
+<div class="grid-overlay"></div>
+<nav class="topnav">
+  <div class="nav-logo">[⬡ CYBERSCAN<span class="logo-pro">PRO</span>]</div>
+  <div class="nav-right">
+    <div class="nav-links">
+      <a href="{{ url_for('index') }}" class="nav-link">New Scan</a>
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
+        <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+      {% endif %}
+    </div>
+    <div class="nav-status"><span class="status-dot done"></span><span class="status-text">SCAN COMPLETE</span></div>
+  </div>
+</nav>
+
+<div class="result-hero">
+  <div class="result-target-line">
+    <span class="rh-label">TARGET</span>
+    <span class="rh-domain">{{ data.target }}</span>
+    <span class="sev-pill sev-{{ data.risk_level }}">{{ data.risk_level }} RISK</span>
+  </div>
+  <div class="result-time">Scanned: {{ data.timestamp[:19] }} UTC</div>
+</div>
+
+<div class="result-dashboard">
+  <!-- LEFT COLUMN -->
+  <div class="result-left">
+    {% set sc = 'score-high' if data.score>=80 else 'score-medium' if data.score>=50 else 'score-low' if data.score>=25 else 'score-critical' %}
+    <div class="score-card {{ sc }}">
+      <div class="score-label">SECURITY SCORE</div>
+      <div class="score-number">{{ data.score }}</div>
+      <div class="score-denom">/100</div>
+      <div class="score-badge">{{ 'SECURE' if data.score>=80 else 'AT RISK' if data.score>=50 else 'CRITICAL' if data.score>=25 else 'DANGER' }}</div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Score Gauge</div>
+      <div class="chart-wrap">
+        <canvas id="doughnutChart"></canvas>
+        <div class="chart-center-label">{{ data.score }}%</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Security Dimensions</div>
+      <canvas id="radarChart" height="220"></canvas>
+    </div>
+
+    <!-- SCORE DEDUCTIONS -->
+    <div class="analysis-card">
+      <div class="analysis-card-header">
+        <span class="ac-icon">📉</span>
+        <span class="ac-title">Score Deductions</span>
+        <span class="ac-badge badge-warn">CVSS-STYLE</span>
+      </div>
+      <div class="analysis-card-body">
+        {% if data.deductions %}
+        <table class="deductions-table">
+          <tr><th>Issue</th><th>Sev</th><th>-Pts</th></tr>
+          {% for d in data.deductions %}
+          <tr>
+            <td>{{ d.issue[:50] }}</td>
+            <td><span class="sev-pill sev-{{ d.severity }}">{{ d.severity }}</span></td>
+            <td style="color:var(--red);font-family:var(--font-mono);">-{{ d.points }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}
+        <p class="status-ok">No deductions — perfect score!</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="result-right">
+
+    <!-- BAR CHART -->
+    <div class="analysis-card">
+      <div class="analysis-card-header"><span class="ac-icon">📊</span><span class="ac-title">Vulnerability Analysis</span></div>
+      <div class="analysis-card-body"><canvas id="barChart" height="140"></canvas></div>
+    </div>
+
+    <!-- SSL -->
+    <div class="analysis-card">
+      <div class="analysis-card-header">
+        <span class="ac-icon">🔒</span><span class="ac-title">SSL / TLS Certificate</span>
+        <span class="ac-badge {{ 'badge-ok' if data.ssl.valid else 'badge-fail' }}">{{ '✓ VALID' if data.ssl.valid else '✗ INVALID' }}</span>
+      </div>
+      <div class="analysis-card-body">
+        {% if data.ssl.valid %}
+          <p class="status-ok">✓ HTTPS active — encrypted connection established</p>
+          <div class="issue-row" style="border-bottom:none;padding-top:10px;">
+            <span class="rec-check">📅</span>
+            <div class="row-content">
+              Expires: {{ data.ssl.expires or 'N/A' }}
+              {% if data.ssl.days_left is not none %}
+                <span class="sev-pill {{ 'sev-HIGH' if data.ssl.expiring_soon else 'sev-INFO' }}" style="margin-left:8px;">{{ data.ssl.days_left }} days left</span>
+              {% endif %}
+            </div>
+          </div>
+        {% else %}
+          <p class="status-fail">✗ SSL certificate invalid or absent — plaintext transmission</p>
+          {% if data.ssl.error %}<p style="font-size:12px;color:var(--text-dim);margin-top:8px;">{{ data.ssl.error }}</p>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- SECURITY HEADERS -->
+    <div class="analysis-card">
+      <div class="analysis-card-header">
+        <span class="ac-icon">📋</span><span class="ac-title">Security Headers</span>
+        <span class="ac-badge {{ 'badge-ok' if not data.headers.issues else 'badge-fail' }}">{{ data.headers.issues|length }} MISSING</span>
+      </div>
+      <div class="analysis-card-body">
+        {% for issue in data.headers.issues %}
+        <div class="issue-row">
+          <span class="issue-x">✗</span>
+          <div class="row-content">
+            <span class="sev-pill sev-{{ {'Strict-Transport-Security':'HIGH','Content-Security-Policy':'HIGH','X-Frame-Options':'MEDIUM','X-Content-Type-Options':'MEDIUM','Referrer-Policy':'LOW','Permissions-Policy':'LOW'}.get(issue.header,'LOW') }}">{{ {'Strict-Transport-Security':'HIGH','Content-Security-Policy':'HIGH','X-Frame-Options':'MEDIUM','X-Content-Type-Options':'MEDIUM','Referrer-Policy':'LOW','Permissions-Policy':'LOW'}.get(issue.header,'LOW') }}</span>
+            {{ issue.header }}
+            <span class="row-detail">Fix: {{ issue.fix }} | Risk: {{ issue.risk }}</span>
+          </div>
+        </div>
+        {% endfor %}
+        {% for p in data.headers.present %}
+        <div class="issue-row">
+          <span class="rec-check">✓</span>
+          <div class="row-content" style="font-size:13px;">{{ p.header }}<span class="row-detail">{{ p.value }}</span></div>
+        </div>
+        {% endfor %}
+        {% if not data.headers.issues and not data.headers.present %}
+          <p class="status-ok">No issues detected.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- PORTS -->
+    <div class="analysis-card">
+      <div class="analysis-card-header">
+        <span class="ac-icon">🔌</span><span class="ac-title">Open Ports</span>
+        <span class="ac-badge {{ 'badge-fail' if data.ports|selectattr('dangerous')|list else 'badge-ok' if data.ports else 'badge-info' }}">{{ data.ports|length }} OPEN</span>
+      </div>
+      <div class="analysis-card-body">
+        {% if data.ports %}
+          {% for p in data.ports %}
+          <div class="port-row">
+            <span class="{{ 'risk-icon' if p.dangerous else 'rec-check' }}">{{ '⚠' if p.dangerous else '•' }}</span>
+            <div class="row-content {{ 'port-danger' if p.dangerous else 'port-safe' }}">
+              Port {{ p.port }} — {{ p.service }}
+              {% if p.dangerous %}<span class="sev-pill sev-HIGH" style="margin-left:8px;">DANGEROUS</span>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="status-ok">No commonly targeted ports found open.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- EXPOSED FILES -->
+    <div class="analysis-card">
+      <div class="analysis-card-header">
+        <span class="ac-icon">📂</span><span class="ac-title">Exposed Sensitive Files</span>
+        <span class="ac-badge {{ 'badge-fail' if data.exposed_files else 'badge-ok' }}">{{ data.exposed_files|length }} FOUND</span>
+      </div>
+      <div class="analysis-card-body">
+        {% if data.exposed_files %}
+          {% for f in data.exposed_files %}
+          <div class="file-row">
+            <span class="{{ 'issue-x' if f.dangerous else 'risk-icon' }}">{{ '✗' if f.dangerous else '⚠' }}</span>
+            <div class="row-content">
+              <code style="font-family:var(--font-mono);font-size:13px;">{{ f.path }}</code>
+              <span class="sev-pill {{ 'sev-CRITICAL' if f.dangerous else 'sev-MEDIUM' }}" style="margin-left:8px;">HTTP {{ f.status }}</span>
+              {% if f.dangerous %}<span class="row-detail">Sensitive file publicly accessible — restrict immediately</span>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="status-ok">No sensitive files found publicly accessible.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- SERVER LEAKS -->
+    {% if data.headers.leaks %}
+    <div class="analysis-card">
+      <div class="analysis-card-header">
+        <span class="ac-icon">🕵</span><span class="ac-title">Technology Fingerprinting</span>
+        <span class="ac-badge badge-warn">{{ data.headers.leaks|length }} LEAK{{ 'S' if data.headers.leaks|length != 1 }}</span>
+      </div>
+      <div class="analysis-card-body">
+        {% for k,v in data.headers.leaks.items() %}
+        <div class="leak-row">
+          <span class="risk-icon">⚠</span>
+          <div class="row-content">{{ k }}: <code style="font-family:var(--font-mono);font-size:12px;color:var(--orange);">{{ v }}</code>
+          <span class="row-detail">Version info exposed — attackers can target known CVEs</span></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- RISKS -->
+    <div class="analysis-card">
+      <div class="analysis-card-header">
+        <span class="ac-icon">☠</span><span class="ac-title">Identified Risk Vectors</span>
+        <span class="ac-badge {{ 'badge-fail' if data.risks else 'badge-ok' }}">{{ data.risks|length }} RISK{{ 'S' if data.risks|length!=1 }}</span>
+      </div>
+      <div class="analysis-card-body">
+        {% if data.risks %}
+          {% for r in data.risks %}
+          <div class="risk-row">
+            <span class="risk-icon">⚠</span>
+            <div class="row-content">
+              <span class="sev-pill sev-{{ r.severity }}">{{ r.severity }}</span> {{ r.title }}
+              <span class="row-detail">{{ r.detail }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="status-ok">No critical risk vectors identified.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- RECOMMENDATIONS -->
+    <div class="analysis-card">
+      <div class="analysis-card-header">
+        <span class="ac-icon">🛠</span><span class="ac-title">Remediation Recommendations</span>
+        <span class="ac-badge badge-info">{{ data.recommendations|length }} ACTION{{ 'S' if data.recommendations|length!=1 }}</span>
+      </div>
+      <div class="analysis-card-body">
+        {% if data.recommendations %}
+          {% for r in data.recommendations %}
+          <div class="rec-row">
+            <span class="rec-check">→</span>
+            <div class="row-content">
+              <span class="sev-pill sev-{{ r.severity }}">{{ r.severity }}</span> <strong>{{ r.title }}</strong>
+              <span class="row-detail">{{ r.detail }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="status-ok">No immediate remediation required.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- DOWNLOAD -->
+<div class="download-section">
+  <div class="download-title">📥 Download Security Report</div>
+  <p class="download-desc">Comprehensive 200+ word analysis with all findings, CVSS scoring, risk vectors, and remediation roadmap.</p>
+  <div class="download-buttons">
+    <a href="{{ url_for('download_pdf', filename=filename) }}" class="dl-btn dl-pdf">
+      <span class="dl-icon">📄</span><span class="dl-label">PDF REPORT</span><span class="dl-sub">Full Analysis</span>
+    </a>
+    <a href="{{ url_for('download_json', filename=filename) }}" class="dl-btn dl-json">
+      <span class="dl-icon">{ }</span><span class="dl-label">JSON DATA</span><span class="dl-sub">Raw Results</span>
+    </a>
+    <a href="{{ url_for('download_excel', filename=filename) }}" class="dl-btn dl-excel">
+      <span class="dl-icon">📊</span><span class="dl-label">EXCEL</span><span class="dl-sub">Spreadsheet</span>
+    </a>
+  </div>
+</div>
+
+<div class="back-section">
+  <a href="{{ url_for('index') }}" class="back-btn">← SCAN ANOTHER TARGET</a>
+  {% if current_user.is_authenticated %}
+  <a href="{{ url_for('dashboard') }}" class="back-btn" style="margin-left:12px;">📊 DASHBOARD</a>
+  {% endif %}
+</div>
+
+{% include '_footer.html' %}
+
+<script>
+const SCORE={{ data.score }};
+const SSL_SCORE={{ 100 if data.ssl.valid else 0 }};
+const HDR_ISSUES={{ data.headers.issues|length }};
+const RISKS={{ data.risks|length }};
+const PORTS_OPEN={{ data.ports|length }};
+const EXPOSED={{ data.exposed_files|length }};
+const HDR_SCORE=Math.max(0,100-(HDR_ISSUES*16));
+
+const dCtx=document.getElementById('doughnutChart').getContext('2d');
+new Chart(dCtx,{type:'doughnut',data:{labels:['Secure','Vulnerable'],datasets:[{data:[SCORE,100-SCORE],backgroundColor:[SCORE>=80?'#00ffc8':SCORE>=50?'#f0a500':'#ff3860','rgba(255,255,255,0.06)'],borderWidth:0}]},options:{cutout:'72%',plugins:{legend:{labels:{color:'#7aabb8',font:{family:'Rajdhani',size:13}}}},animation:{duration:1400}}});
+
+const rCtx=document.getElementById('radarChart').getContext('2d');
+new Chart(rCtx,{type:'radar',data:{labels:['SSL/TLS','Headers','Ports','Files','Overall'],datasets:[{label:'Security',data:[SSL_SCORE,HDR_SCORE,Math.max(0,100-PORTS_OPEN*15),Math.max(0,100-EXPOSED*20),SCORE],backgroundColor:'rgba(0,255,200,0.1)',borderColor:'#00ffc8',pointBackgroundColor:'#00ffc8',pointRadius:4,borderWidth:2}]},options:{scales:{r:{min:0,max:100,ticks:{color:'#3a6070',stepSize:25,font:{size:10}},grid:{color:'rgba(0,255,200,0.08)'},angleLines:{color:'rgba(0,255,200,0.08)'},pointLabels:{color:'#7aabb8',font:{family:'Rajdhani',size:12}}}},plugins:{legend:{labels:{color:'#7aabb8',font:{family:'Rajdhani'}}}},animation:{duration:1600}}});
+
+const bCtx=document.getElementById('barChart').getContext('2d');
+new Chart(bCtx,{type:'bar',data:{labels:['SSL','Headers','Open Ports','Exposed Files','Final Score'],datasets:[{label:'Score/Count',data:[SSL_SCORE,HDR_SCORE,Math.min(PORTS_OPEN*10,100),Math.min(EXPOSED*20,100),SCORE],backgroundColor:['#00ffc8','#00aaff','#f0a500','#ff3860','#00ffc8'],borderRadius:6,borderWidth:0}]},options:{scales:{y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#3a6070'}},x:{grid:{display:false},ticks:{color:'#7aabb8',font:{family:'Rajdhani'}}}},plugins:{legend:{display:false}},animation:{duration:1200}}});
+</script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body></html>

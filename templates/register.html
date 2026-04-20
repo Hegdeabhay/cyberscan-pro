@@ -1,0 +1,36 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Register — CyberScan Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head><body>
+<canvas id="particles" class="particles-canvas"></canvas>
+<div class="grid-overlay"></div>
+<nav class="topnav">
+  <div class="nav-logo">[⬡ CYBERSCAN<span class="logo-pro">PRO</span>]</div>
+  <div class="nav-right">
+    <div class="nav-links">
+      <a href="{{ url_for('index') }}" class="nav-link">← Home</a>
+      <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+    </div>
+    <div class="nav-status"><span class="status-dot"></span><span class="status-text">ONLINE</span></div>
+  </div>
+</nav>
+{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-container">{% for c,m in messages %}<div class="flash flash-{{ c }}">{{ m }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+<div class="auth-section">
+  <div class="auth-box">
+    <div class="auth-title">CREATE ACCOUNT</div>
+    <div class="auth-sub">JOIN CYBERSCAN PRO</div>
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group"><label class="form-label">USERNAME</label><input class="form-input" name="username" required placeholder="h4cker_pro" autocomplete="username" minlength="3"></div>
+      <div class="form-group"><label class="form-label">EMAIL ADDRESS</label><input class="form-input" name="email" type="email" required placeholder="you@example.com" autocomplete="email"></div>
+      <div class="form-group"><label class="form-label">PASSWORD (min 8 chars)</label><input class="form-input" name="password" type="password" required placeholder="••••••••" autocomplete="new-password" minlength="8"></div>
+      <button type="submit" class="auth-btn">CREATE ACCOUNT →</button>
+    </form>
+    <div class="auth-switch">Already registered? <a href="{{ url_for('login') }}">Login here</a></div>
+  </div>
+</div>
+{% include '_footer.html' %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body></html>

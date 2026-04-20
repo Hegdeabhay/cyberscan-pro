@@ -1,0 +1,52 @@
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">[⬡ CYBERSCAN<span class="logo-pro">PRO</span>]</div>
+    <div class="footer-links">
+      <a href="#" class="footer-link" onclick="openModal('termsModal');return false;">Terms &amp; Conditions</a>
+      <a href="#" class="footer-link" onclick="openModal('privacyModal');return false;">Privacy Policy</a>
+      <a href="#" class="footer-link" onclick="openModal('disclaimerModal');return false;">Disclaimer</a>
+    </div>
+    <div class="footer-copy">© 2025 CyberScan Pro — For authorized use only</div>
+  </div>
+</footer>
+<div id="termsModal" class="modal-overlay" onclick="closeModal(event,'termsModal')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal(null,'termsModal')">✕</button>
+    <h2 class="modal-title">Terms &amp; Conditions</h2>
+    <div class="modal-body">
+      <p><strong>1. Authorized Use Only</strong><br>CyberScan Pro is strictly for authorized security testing. You must have explicit written permission from the domain owner before scanning any system. Unauthorized scanning of third-party infrastructure is illegal under the Computer Fraud and Abuse Act (CFAA) and equivalent laws globally.</p>
+      <p><strong>2. No Warranty</strong><br>Results are provided "as-is". CyberScan Pro does not guarantee completeness, accuracy, or fitness for any particular purpose. Security assessments are indicative and not exhaustive — a clean result does not guarantee the absence of vulnerabilities.</p>
+      <p><strong>3. Liability Limitation</strong><br>CyberScan Pro and its developers shall not be liable for any direct, indirect, incidental, or consequential damages arising from use or misuse of this tool, including data loss, system downtime, or legal consequences.</p>
+      <p><strong>4. Data Handling</strong><br>Scan data is processed locally on your server instance. No scan results, domain names, or user data are transmitted to external parties. Reports are stored temporarily in the local <code>/reports</code> directory.</p>
+      <p><strong>5. Rate Limiting</strong><br>To prevent abuse, the scanner enforces rate limits. Excessive scanning may result in temporary access restriction.</p>
+      <p><strong>6. Ethical Use</strong><br>This tool must be used ethically and responsibly in accordance with all applicable laws. Any use for malicious, criminal, or harmful purposes is strictly prohibited.</p>
+      <p><strong>7. Updates</strong><br>These terms may be updated at any time. Continued use constitutes acceptance of the revised terms.</p>
+    </div>
+  </div>
+</div>
+<div id="privacyModal" class="modal-overlay" onclick="closeModal(event,'privacyModal')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal(null,'privacyModal')">✕</button>
+    <h2 class="modal-title">Privacy Policy</h2>
+    <div class="modal-body">
+      <p><strong>Data Collection</strong><br>We collect only the URL/domain you submit for scanning and your account details (username, email, hashed password) if you register. No payment information is collected.</p>
+      <p><strong>Scan Data</strong><br>Scan results are stored in a local SQLite database tied to your account. They are not shared with or sold to any third party.</p>
+      <p><strong>Report Storage</strong><br>Generated reports (JSON, PDF, Excel) are stored locally in the <code>/reports</code> directory of the installation. You can delete these from your dashboard at any time.</p>
+      <p><strong>No External Tracking</strong><br>We do not use cookies for tracking, analytics platforms, or advertising networks. Session cookies are used solely for authentication.</p>
+      <p><strong>Password Security</strong><br>All passwords are hashed using Werkzeug's PBKDF2-SHA256 algorithm. Plaintext passwords are never stored.</p>
+      <p><strong>Data Deletion</strong><br>You may delete your scan history at any time from the dashboard. Account deletion removes all associated data.</p>
+    </div>
+  </div>
+</div>
+<div id="disclaimerModal" class="modal-overlay" onclick="closeModal(event,'disclaimerModal')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal(null,'disclaimerModal')">✕</button>
+    <h2 class="modal-title">Disclaimer</h2>
+    <div class="modal-body">
+      <p>CyberScan Pro is an educational and professional security assessment tool designed to help system owners identify potential weaknesses in their own infrastructure.</p>
+      <p>Scan results represent a point-in-time automated assessment and <strong>do not constitute a comprehensive security audit or penetration test</strong>. A high score does not imply that a system is fully secure.</p>
+      <p>Always engage a certified security professional (OSCP, CEH, CISSP) for critical systems, production environments, or compliance requirements (PCI-DSS, ISO 27001, SOC 2).</p>
+      <p>CyberScan Pro is not affiliated with, endorsed by, or responsible for any actions taken based on this report's findings.</p>
+    </div>
+  </div>
+</div>

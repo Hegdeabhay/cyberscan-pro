@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CyberScan Pro — Vulnerability Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<canvas id="particles" class="particles-canvas"></canvas>
+<div class="grid-overlay"></div>
+<nav class="topnav">
+  <div class="nav-logo">[⬡ CYBERSCAN<span class="logo-pro">PRO</span>]</div>
+  <div class="nav-right">
+    <div class="nav-links">
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('dashboard') }}" class="nav-link">📊 Dashboard</a>
+        <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+        <a href="{{ url_for('register') }}" class="nav-link btn-primary">Register</a>
+      {% endif %}
+    </div>
+    <div class="nav-status"><span class="status-dot"></span><span class="status-text">ONLINE</span></div>
+  </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-container">
+    {% for cat, msg in messages %}
+    <div class="flash flash-{{ cat }}">{{ '✓' if cat=='success' else '✗' }} {{ msg }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+<section class="vuln-banner">
+  <div class="vuln-banner-inner">
+    <div class="vuln-header-tag">⚠ THREAT INTELLIGENCE BRIEFING</div>
+    <h1 class="vuln-title">Understanding Vulnerabilities</h1>
+    <p class="vuln-desc">Vulnerabilities are weaknesses in a system that give threats the opportunity to compromise an individual's or an organisation's assets. As the attackers are leveling up their attacking mechanisms, the number of vulnerable assets is increasing too. These could include the <strong>code, human weaknesses, unpatched software, improper authentication mechanisms</strong>, etc.</p>
+    <div class="vuln-types-grid">
+      <div class="vuln-card"><div class="vuln-card-icon">💻</div><div class="vuln-card-title">Software Vulnerabilities</div><div class="vuln-card-desc">Bugs, buffer overflows, SQL injection, unpatched CVEs in applications and OS.</div></div>
+      <div class="vuln-card"><div class="vuln-card-icon">🔐</div><div class="vuln-card-title">Authentication Flaws</div><div class="vuln-card-desc">Weak passwords, broken auth mechanisms, missing MFA, session hijacking risks.</div></div>
+      <div class="vuln-card"><div class="vuln-card-icon">🌐</div><div class="vuln-card-title">Network Weaknesses</div><div class="vuln-card-desc">Missing SSL, exposed ports, misconfigured headers, unencrypted transmissions.</div></div>
+      <div class="vuln-card"><div class="vuln-card-icon">👤</div><div class="vuln-card-title">Human Factor</div><div class="vuln-card-desc">Social engineering, phishing susceptibility, insider threats, poor security hygiene.</div></div>
+      <div class="vuln-card"><div class="vuln-card-icon">🛡</div><div class="vuln-card-title">Configuration Errors</div><div class="vuln-card-desc">Default credentials, open S3 buckets, misconfigured firewalls, excessive permissions.</div></div>
+      <div class="vuln-card"><div class="vuln-card-icon">⚡</div><div class="vuln-card-title">Zero-Day Exploits</div><div class="vuln-card-desc">Unknown vulnerabilities actively exploited before vendors release patches.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="scanner-section">
+  <div class="scanner-container">
+    <div class="terminal-line"><span class="terminal-prompt">root@cyberscan:~$</span><span class="terminal-cmd"> initiate_scan --deep --ssrf-protect</span><span class="terminal-cursor">█</span></div>
+    <h2 class="scanner-heading">Scan Your Website</h2>
+    <p class="scanner-sub">Deep security analysis — SSL, headers, ports, exposed files, DNS, and more</p>
+    <form method="POST" action="{{ url_for('scan') }}" onsubmit="startScan(event)" class="scan-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="input-wrapper">
+        <span class="input-prefix">https://</span>
+        <input name="url" id="urlInput" placeholder="example.com" required autocomplete="off" spellcheck="false">
+        <span class="input-scan-icon">🔍</span>
+      </div>
+      <button type="submit" class="scan-btn"><span class="btn-text">INITIATE DEEP SCAN</span><span class="btn-glow"></span></button>
+    </form>
+    <div class="scan-features">
+      <div class="feat-item"><span class="feat-dot"></span>SSL / TLS + Expiry</div>
+      <div class="feat-item"><span class="feat-dot"></span>6 Security Headers</div>
+      <div class="feat-item"><span class="feat-dot"></span>Port Scanner</div>
+      <div class="feat-item"><span class="feat-dot"></span>Exposed Files</div>
+      <div class="feat-item"><span class="feat-dot"></span>CVSS Scoring</div>
+      <div class="feat-item"><span class="feat-dot"></span>PDF / Excel / JSON</div>
+    </div>
+  </div>
+</section>
+
+{% if current_user.is_authenticated and recent %}
+<div class="recent-section">
+  <div class="recent-title">▸ YOUR RECENT SCANS</div>
+  {% for s in recent %}
+  {% set sc = 'high' if s.score>=80 else 'medium' if s.score>=50 else 'low' if s.score>=25 else 'critical' %}
+  <a href="{{ url_for('view_scan', scan_id=s.id) }}" class="recent-row">
+    <span class="recent-domain">{{ s.target }}</span>
+    <span class="recent-meta">
+      <span class="recent-score score-color-{{ sc }}">{{ s.score }}/100</span>
+      <span class="recent-date">{{ s.scanned_at.strftime('%d %b %H:%M') }}</span>
+    </span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div id="loader" class="loader hidden">
+  <div class="loader-inner"><div class="loader-ring"></div><div class="loader-ring r2"></div><div class="loader-icon">⬡</div></div>
+  <div class="loader-text-block">
+    <div class="loader-title">DEEP SCANNING</div>
+    <div id="loaderMsg" class="loader-msg">Initializing...</div>
+    <div class="loader-bar-wrap"><div id="loaderBar" class="loader-bar"></div></div>
+    <div id="loaderDomain" class="loader-domain"></div>
+  </div>
+</div>
+
+{% include '_footer.html' %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body></html>

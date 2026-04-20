@@ -1,0 +1,90 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Dashboard — CyberScan Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head><body>
+<canvas id="particles" class="particles-canvas"></canvas>
+<div class="grid-overlay"></div>
+<nav class="topnav">
+  <div class="nav-logo">[⬡ CYBERSCAN<span class="logo-pro">PRO</span>]</div>
+  <div class="nav-right">
+    <div class="nav-links">
+      <a href="{{ url_for('index') }}" class="nav-link btn-primary">+ New Scan</a>
+      <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+    </div>
+    <div class="nav-status"><span class="status-dot"></span><span class="status-text">{{ current_user.username|upper }}</span></div>
+  </div>
+</nav>
+{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-container">{% for c,m in messages %}<div class="flash flash-{{ c }}">{{ m }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+
+<div class="dashboard-hero">
+  <div class="dashboard-title">SECURITY DASHBOARD</div>
+  <div class="dashboard-sub">Scan history and analytics for {{ current_user.username }}</div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-number">{{ scans|length }}</div><div class="stat-label">TOTAL SCANS</div></div>
+  <div class="stat-card"><div class="stat-number" style="color:var(--cyan)">{{ avg_score }}</div><div class="stat-label">AVG SCORE</div></div>
+  <div class="stat-card"><div class="stat-number" style="color:var(--red)">{{ scans|selectattr('risk_level','equalto','CRITICAL')|list|length }}</div><div class="stat-label">CRITICAL SITES</div></div>
+  <div class="stat-card"><div class="stat-number" style="color:var(--cyan)">{{ scans|selectattr('risk_level','equalto','LOW')|list|length }}</div><div class="stat-label">SECURE SITES</div></div>
+  <div class="stat-card"><div class="stat-number" style="color:var(--orange)">{{ scans|selectattr('ssl_valid','equalto',false)|list|length }}</div><div class="stat-label">NO SSL</div></div>
+</div>
+
+{% if scans %}
+<div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:0">
+  <div class="stat-card"><div class="chart-title">Score Trend</div><canvas id="trendChart" height="180"></canvas></div>
+  <div class="stat-card"><div class="chart-title">Risk Distribution</div><canvas id="riskChart" height="180"></canvas></div>
+</div>
+{% endif %}
+
+<div class="scan-history">
+  <div class="sh-header">
+    <div class="sh-title">SCAN HISTORY</div>
+  </div>
+  {% if scans %}
+  <table class="scan-table">
+    <thead><tr><th>Domain</th><th>Score</th><th>Risk</th><th>SSL</th><th>Issues</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% for s in scans %}
+    {% set sc = 'high' if s.score>=80 else 'medium' if s.score>=50 else 'low' if s.score>=25 else 'critical' %}
+    <tr onclick="window.location='{{ url_for('view_scan', scan_id=s.id) }}'">
+      <td class="td-domain">{{ s.target }}</td>
+      <td class="td-score score-color-{{ sc }}">{{ s.score }}/100</td>
+      <td><span class="sev-pill sev-{{ s.risk_level }}">{{ s.risk_level }}</span></td>
+      <td>{% if s.ssl_valid %}<span style="color:var(--cyan)">✓</span>{% else %}<span style="color:var(--red)">✗</span>{% endif %}</td>
+      <td style="color:var(--text-secondary);font-family:var(--font-mono)">{{ s.issues_count }}</td>
+      <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">{{ s.scanned_at.strftime('%d %b %Y %H:%M') }}</td>
+      <td onclick="event.stopPropagation()">
+        <div class="td-actions">
+          <a href="{{ url_for('view_scan', scan_id=s.id) }}" class="action-btn action-view">View</a>
+          <form method="POST" action="{{ url_for('delete_scan', scan_id=s.id) }}" style="display:inline" onsubmit="return confirm('Delete this scan?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="action-btn action-del">Del</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">No scans yet. <a href="{{ url_for('index') }}" style="color:var(--cyan)">Run your first scan →</a></div>
+  {% endif %}
+</div>
+
+{% include '_footer.html' %}
+<script>
+{% if scans %}
+const labels = [{% for s in scans|reverse %}"{{ s.target[:15] }}"{% if not loop.last %},{% endif %}{% endfor %}];
+const scores = [{% for s in scans|reverse %}{{ s.score }}{% if not loop.last %},{% endif %}{% endfor %}];
+new Chart(document.getElementById('trendChart').getContext('2d'),{type:'line',data:{labels,datasets:[{label:'Score',data:scores,borderColor:'#00ffc8',backgroundColor:'rgba(0,255,200,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#00ffc8',pointRadius:4}]},options:{scales:{y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#3a6070'}},x:{grid:{display:false},ticks:{color:'#7aabb8',font:{size:10}}}},plugins:{legend:{display:false}}}});
+
+const riskCounts={'LOW':0,'MEDIUM':0,'HIGH':0,'CRITICAL':0};
+{% for s in scans %}riskCounts['{{ s.risk_level }}']=(riskCounts['{{ s.risk_level }}']||0)+1;{% endfor %}
+new Chart(document.getElementById('riskChart').getContext('2d'),{type:'doughnut',data:{labels:Object.keys(riskCounts),datasets:[{data:Object.values(riskCounts),backgroundColor:['#00ffc8','#f0a500','#ff3860','#cc0000'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#7aabb8',font:{family:'Rajdhani'}}}}}});
+{% endif %}
+</script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body></html>
