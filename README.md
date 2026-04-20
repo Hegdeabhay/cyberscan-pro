@@ -27,5 +27,4 @@ python app.py
 - `/scan/<id>` — View saved scan
 - `/scan/delete/<id>` — Delete scan
 - `/download/pdf|json|excel/<filename>` — Downloads
-![Alt text](image-url-or-path)
-<img width="1600" height="756" alt="image" src="https://github.com/user-attachments/assets/3d430704-2979-4e99-a37a-f5486bc8e49d" />
+<img width="1600" height="756" alt="First Image" src="https://github.com/user-attachments/assets/3d430704-2979-4e99-a37a-f5486bc8e49d" />
